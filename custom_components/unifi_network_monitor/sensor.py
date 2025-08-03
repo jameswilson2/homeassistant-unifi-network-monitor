@@ -49,12 +49,17 @@ class UniFiDeviceSensor(Entity):
 
     @property
     def extra_state_attributes(self):
-        # Safely extract nested fields
         uplink = self._device.get("uplink", {})
         features = self._device.get("features", {})
         interfaces = self._device.get("interfaces", {})
-        ports = interfaces.get("ports", [])
-        radios = interfaces.get("radios", [])
+
+        # Ensure interfaces is a dict
+        if isinstance(interfaces, dict):
+            ports = interfaces.get("ports", [])
+            radios = interfaces.get("radios", [])
+        else:
+            ports = []
+            radios = []
 
         return {
             "id": self._device.get("id"),
