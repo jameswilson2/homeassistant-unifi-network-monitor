@@ -1,21 +1,34 @@
-from homeassistant.helpers.entity import Entity
+from homeassistant.helpers.entity import Entity, DeviceInfo
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 
+SENSOR_TYPES = {
+    "ipAddress": {"name": "IP Address", "icon": "mdi:ip-network"},
+    "firmwareVersion": {"name": "Firmware Version", "icon": "mdi:chip"},
+    "state": {"name": "State", "icon": "mdi:lan-connect"},
+    "model": {"name": "Model", "icon": "mdi:access-point"},
+    "supported": {"name": "Supported", "icon": "mdi:check-circle"},
+    "firmwareUpdatable": {"name": "Firmware Updatable", "icon": "mdi:update"},
+    # Add more attributes here as needed
+}
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     controller = hass.data[DOMAIN][entry.entry_id]
     await controller.update_data()
     entities = []
 
-    # Site name sensor (optional, keep if you want)
+    # Site name sensor (optional)
     entities.append(UniFiSiteSensor(controller))
 
-    # Add a sensor for each device
+    # For each device, create a sensor for each attribute
     for device in controller.devices:
-        entities.append(UniFiDeviceSensor(device))
+        for attr, desc in SENSOR_TYPES.items():
+            entities.append(
+                UniFiDeviceAttributeSensor(device, attr, desc["name"], desc["icon"])
+            )
 
     async_add_entities(entities, True)
 
@@ -32,11 +45,24 @@ class UniFiSiteSensor(Entity):
     def state(self):
         return self._controller.site_name
 
-class UniFiDeviceSensor(Entity):
-    def __init__(self, device):
+class UniFiDeviceAttributeSensor(Entity):
+    def __init__(self, device, attribute, friendly_name, icon):
         self._device = device
-        self._attr_name = f"UniFi Device {device.get('name', device.get('macAddress', 'Unknown'))}"
-        self._attr_unique_id = f"unifi_device_{device.get('macAddress', 'unknown')}"
+        self._attribute = attribute
+        self._attr_name = f"{device.get('name', device.get('macAddress', 'Unknown'))} {friendly_name}"
+        self._attr_unique_id = f"unifi_{device.get('macAddress', 'unknown')}_{attribute}"
+        self._attr_icon = icon
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers = {(DOMAIN, self._device.get("macAddress"))},
+            name = self._device.get("name"),
+            model = self._device.get("model"),
+            manufacturer = "Ubiquiti",
+            sw_version = self._device.get("firmwareVersion"),
+            configuration_url = None,
+        )
 
     async def async_update(self):
         # No-op: device data is refreshed by controller
@@ -44,47 +70,4 @@ class UniFiDeviceSensor(Entity):
 
     @property
     def state(self):
-        # Example: show device state (ONLINE, OFFLINE, etc.)
-        return self._device.get("state", "unknown")
-
-    @property
-    def extra_state_attributes(self):
-        uplink = self._device.get("uplink", {})
-        features = self._device.get("features", {})
-        interfaces = self._device.get("interfaces", {})
-
-        # Ensure features is a dict
-        if isinstance(features, dict):
-            switching = features.get("switching")
-            access_point = features.get("accessPoint")
-        else:
-            switching = None
-            access_point = None
-
-        # Ensure interfaces is a dict
-        if isinstance(interfaces, dict):
-            ports = interfaces.get("ports", [])
-            radios = interfaces.get("radios", [])
-        else:
-            ports = []
-            radios = []
-
-        return {
-            "id": self._device.get("id"),
-            "name": self._device.get("name"),
-            "model": self._device.get("model"),
-            "supported": self._device.get("supported"),
-            "macAddress": self._device.get("macAddress"),
-            "ipAddress": self._device.get("ipAddress"),
-            "state": self._device.get("state"),
-            "firmwareVersion": self._device.get("firmwareVersion"),
-            "firmwareUpdatable": self._device.get("firmwareUpdatable"),
-            "adoptedAt": self._device.get("adoptedAt"),
-            "provisionedAt": self._device.get("provisionedAt"),
-            "configurationId": self._device.get("configurationId"),
-            "uplink_deviceId": uplink.get("deviceId") if isinstance(uplink, dict) else None,
-            "features_switching": switching,
-            "features_accessPoint": access_point,
-            "ports": ports,
-            "radios": radios,
-        }
+        return self._device.get(self._attribute)
