@@ -9,6 +9,7 @@ class UniFiController:
         self._host = host.replace("https://", "").replace("http://", "")
         self._api_key = api_key
         self.site_name = None
+        self.devices = []  # <-- Add this line
 
     async def update_data(self):
         url = f"https://{self._host}/proxy/network/integration/v1/sites"
@@ -28,6 +29,30 @@ class UniFiController:
                     else:
                         self.site_name = f"HTTP Error: {resp.status}"
                         _LOGGER.error("UniFi API returned HTTP %d", resp.status)
+                        self.devices = []
+                        return
         except Exception as e:
             self.site_name = f"Connection Error: {str(e)}"
             _LOGGER.error("Exception fetching UniFi data: %s", e)
+            self.devices = []
+            return
+
+        # Now fetch devices for the site
+        if not self.site_name or self.site_name.startswith("HTTP Error") or self.site_name.startswith("Connection Error"):
+            self.devices = []
+            return
+
+        devices_url = f"https://{self._host}/proxy/network/api/s/{self.site_name}/stat/device"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(devices_url, headers=headers, ssl=False) as resp:
+                    if resp.status == 200:
+                        devices_data = await resp.json()
+                        self.devices = devices_data.get("data", [])
+                        _LOGGER.debug("Fetched %d devices", len(self.devices))
+                    else:
+                        _LOGGER.error("Failed to fetch devices: HTTP %d", resp.status)
+                        self.devices = []
+        except Exception as e:
+            _LOGGER.error("Exception fetching UniFi devices: %s", e)
+            self.devices = []
