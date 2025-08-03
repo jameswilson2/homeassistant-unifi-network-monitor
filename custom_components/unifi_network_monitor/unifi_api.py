@@ -62,7 +62,7 @@ class UniFiController:
                                         detailed_devices.append(detail_data["data"])
                                     else:
                                         detailed_devices.append(detail_data)
-                                    _LOGGER.debug("Stored full detail for device %s: %s", device_id, detail)
+                                    _LOGGER.debug("Stored full detail for device %s: %s", device_id, detail_data)
                                 else:
                                     _LOGGER.error("Failed to fetch details for device %s: HTTP %d", device_id, detail_resp.status)
                         self.devices = detailed_devices
