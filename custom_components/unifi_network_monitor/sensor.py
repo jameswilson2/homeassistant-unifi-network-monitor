@@ -35,8 +35,8 @@ class UniFiSiteSensor(Entity):
 class UniFiDeviceSensor(Entity):
     def __init__(self, device):
         self._device = device
-        self._attr_name = f"UniFi Device {device.get('name', device.get('mac', 'Unknown'))}"
-        self._attr_unique_id = f"unifi_device_{device.get('mac', 'unknown')}"
+        self._attr_name = f"UniFi Device {device.get('name', device.get('macAddress', 'Unknown'))}"
+        self._attr_unique_id = f"unifi_device_{device.get('macAddress', 'unknown')}"
 
     async def async_update(self):
         # No-op: device data is refreshed by controller
@@ -52,9 +52,9 @@ class UniFiDeviceSensor(Entity):
         # Expose more device info as attributes
         return {
             "model": self._device.get("model"),
-            "ip": self._device.get("ip"),
+            "ipAddress": self._device.get("ipAddress"),
             "version": self._device.get("version"),
             "last_seen": self._device.get("last_seen"),
             "type": self._device.get("type"),
-            "mac": self._device.get("mac"),
+            "macAddress": self._device.get("macAddress"),
         }
