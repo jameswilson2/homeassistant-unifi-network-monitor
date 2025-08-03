@@ -26,6 +26,7 @@ class UniFiController:
                         _LOGGER.debug("UniFi API response data: %s", full_data)
                         data_list = full_data.get("data", [])
                         self.site_name = data_list[0]["name"] if data_list else "Unknown"
+                        self.site_internal_id = data_list[0]["id"] if data_list else "Unknown"
                     else:
                         self.site_name = f"HTTP Error: {resp.status}"
                         _LOGGER.error("UniFi API returned HTTP %d", resp.status)
@@ -42,7 +43,7 @@ class UniFiController:
             self.devices = []
             return
 
-        devices_url = f"https://{self._host}/proxy/network/integration/v1/sites/{self.site_name}/devices"
+        devices_url = f"https://{self._host}/proxy/network/integration/v1/sites/{self.site_internal_id}/devices"
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(devices_url, headers=headers, ssl=False) as resp:
