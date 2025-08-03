@@ -1,55 +1,43 @@
-import logging
-import httpx
-from datetime import timedelta
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+# custom_components/unifi_network_monitor/coordinator.py
 
-from .const import DOMAIN
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.core import HomeAssistant
+import logging
+import aiohttp
+from datetime import timedelta
 
 _LOGGER = logging.getLogger(__name__)
-
-class UniFiClient:
-    def __init__(self, host, port, site, api_key, verify_ssl):
-        self._base_url = f"https://{host}:{port}/proxy/network/api/s/{site}"
-        self._headers = {"Authorization": f"Bearer {api_key}"}
-        self._verify = verify_ssl
-
-    async def get_stats(self):
-        async with httpx.AsyncClient(verify=self._verify) as client:
-            try:
-                responses = await asyncio.gather(
-                    client.get(f"{self._base_url}/stat/device", headers=self._headers),
-                    client.get(f"{self._base_url}/stat/health", headers=self._headers),
-                    client.get(f"{self._base_url}/stat/clients", headers=self._headers),
-                    client.get(f"{self._base_url}/stat/sysinfo", headers=self._headers),
-                    client.get(f"{self._base_url}/rest/networkconf", headers=self._headers),
-                )
-
-                data = {
-                    "devices": responses[0].json().get("data", []),
-                    "health": responses[1].json().get("data", []),
-                    "clients": responses[2].json().get("data", []),
-                    "sysinfo": responses[3].json().get("data", {}),
-                    "vlans": responses[4].json().get("data", []),
-                }
-                return data
-            except Exception as e:
-                raise UpdateFailed(f"Error fetching UniFi data: {e}")
+SCAN_INTERVAL = timedelta(minutes=1)
 
 class UniFiDataUpdateCoordinator(DataUpdateCoordinator):
-    def __init__(self, hass, config):
-        self.client = UniFiClient(
-            config["host"],
-            config["port"],
-            config["site"],
-            config["api_key"],
-            config["verify_ssl"],
-        )
+    def __init__(self, hass: HomeAssistant, session: aiohttp.ClientSession, config_data: dict):
         super().__init__(
             hass,
             _LOGGER,
             name="UniFi Network Monitor",
-            update_interval=timedelta(seconds=30),
+            update_interval=SCAN_INTERVAL,
         )
+        self.session = session
+        self.api_key = config_data["api_key"]
+        self.url = config_data["base_url"].rstrip("/") + "/proxy/network/integration/v1/sites"
 
     async def _async_update_data(self):
-        return await self.client.get_stats()
+        headers = {
+            "X-API-KEY": self.api_key,
+            "Accept": "application/json"
+        }
+
+        try:
+            async with self.session.get(self.url, headers=headers, ssl=False) as response:
+                if response.status == 200:
+                    return await response.json()
+                elif response.status == 401:
+                    _LOGGER.error("Unauthorized. Check your UniFi API key.")
+                    return {"error": "Unauthorized"}
+                else:
+                    text = await response.text()
+                    _LOGGER.error(f"Error fetching data: {response.status} - {text}")
+                    return {"error": f"{response.status}: {text}"}
+        except aiohttp.ClientError as err:
+            _LOGGER.error(f"Network error: {err}")
+            return {"error": str(err)}
