@@ -179,7 +179,17 @@ class UniFiDeviceAttributeSensor(Entity):
     @property
     def state(self):
         value = self._device.get(self._attribute)
-        # Convert booleans to Yes/No for display
+        if value is None:
+            # Debug log to Home Assistant log
+            import logging
+            _LOGGER = logging.getLogger(__name__)
+            _LOGGER.warning(
+                "Device %s missing attribute %s. Device dict: %s",
+                self._device.get("name"),
+                self._attribute,
+                self._device
+            )
+            return None
         if isinstance(value, bool):
             return "Yes" if value else "No"
         return value

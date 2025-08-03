@@ -7,7 +7,7 @@ import aiohttp
 from datetime import timedelta
 
 _LOGGER = logging.getLogger(__name__)
-SCAN_INTERVAL = timedelta(minutes=1)
+SCAN_INTERVAL = timedelta(seconds=10)
 
 class UniFiDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, session: aiohttp.ClientSession, config_data: dict):
@@ -19,7 +19,9 @@ class UniFiDataUpdateCoordinator(DataUpdateCoordinator):
         )
         self.session = session
         self.api_key = config_data["api_key"]
-        self.url = config_data["base_url"].rstrip("/") + "/proxy/network/integration/v1/sites"
+        self.base_url = config_data["base_url"].rstrip("/")
+        self.sites_url = self.base_url + "/proxy/network/integration/v1/sites"
+        self.devices_url_template = self.base_url + "/proxy/network/integration/v1/sites/{site_id}/devices"
 
     async def _async_update_data(self):
         headers = {
@@ -27,17 +29,46 @@ class UniFiDataUpdateCoordinator(DataUpdateCoordinator):
             "Accept": "application/json"
         }
 
+        data = {}
+        # Fetch sites
         try:
-            async with self.session.get(self.url, headers=headers, ssl=False) as response:
+            async with self.session.get(self.sites_url, headers=headers, ssl=False) as response:
                 if response.status == 200:
-                    return await response.json()
+                    sites_json = await response.json()
+                    data["sites"] = sites_json.get("data", [])
                 elif response.status == 401:
                     _LOGGER.error("Unauthorized. Check your UniFi API key.")
-                    return {"error": "Unauthorized"}
+                    data["error"] = "Unauthorized"
+                    return data
                 else:
                     text = await response.text()
-                    _LOGGER.error(f"Error fetching data: {response.status} - {text}")
-                    return {"error": f"{response.status}: {text}"}
+                    _LOGGER.error(f"Error fetching sites: {response.status} - {text}")
+                    data["error"] = f"{response.status}: {text}"
+                    return data
         except aiohttp.ClientError as err:
-            _LOGGER.error(f"Network error: {err}")
-            return {"error": str(err)}
+            _LOGGER.error(f"Network error fetching sites: {err}")
+            data["error"] = str(err)
+            return data
+
+        # Fetch devices for each site
+        data["devices"] = []
+        for site in data.get("sites", []):
+            site_id = site.get("id")
+            if not site_id:
+                continue
+            devices_url = self.devices_url_template.format(site_id=site_id)
+            try:
+                async with self.session.get(devices_url, headers=headers, ssl=False) as dev_response:
+                    if dev_response.status == 200:
+                        devices_json = await dev_response.json()
+                        # Attach site_id to each device for context if needed
+                        for device in devices_json.get("data", []):
+                            device["site_id"] = site_id
+                            data["devices"].append(device)
+                    else:
+                        text = await dev_response.text()
+                        _LOGGER.error(f"Error fetching devices for site {site_id}: {dev_response.status} - {text}")
+            except aiohttp.ClientError as err:
+                _LOGGER.error(f"Network error fetching devices for site {site_id}: {err}")
+
+        return data
