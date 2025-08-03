@@ -53,6 +53,14 @@ class UniFiDeviceSensor(Entity):
         features = self._device.get("features", {})
         interfaces = self._device.get("interfaces", {})
 
+        # Ensure features is a dict
+        if isinstance(features, dict):
+            switching = features.get("switching")
+            access_point = features.get("accessPoint")
+        else:
+            switching = None
+            access_point = None
+
         # Ensure interfaces is a dict
         if isinstance(interfaces, dict):
             ports = interfaces.get("ports", [])
@@ -74,9 +82,9 @@ class UniFiDeviceSensor(Entity):
             "adoptedAt": self._device.get("adoptedAt"),
             "provisionedAt": self._device.get("provisionedAt"),
             "configurationId": self._device.get("configurationId"),
-            "uplink_deviceId": uplink.get("deviceId"),
-            "features_switching": features.get("switching"),
-            "features_accessPoint": features.get("accessPoint"),
+            "uplink_deviceId": uplink.get("deviceId") if isinstance(uplink, dict) else None,
+            "features_switching": switching,
+            "features_accessPoint": access_point,
             "ports": ports,
             "radios": radios,
         }
