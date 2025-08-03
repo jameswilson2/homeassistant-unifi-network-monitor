@@ -44,17 +44,34 @@ class UniFiDeviceSensor(Entity):
 
     @property
     def state(self):
-        # Example: show device state (1=connected, 0=disconnected)
+        # Example: show device state (ONLINE, OFFLINE, etc.)
         return self._device.get("state", "unknown")
 
     @property
     def extra_state_attributes(self):
-        # Expose more device info as attributes
+        # Safely extract nested fields
+        uplink = self._device.get("uplink", {})
+        features = self._device.get("features", {})
+        interfaces = self._device.get("interfaces", {})
+        ports = interfaces.get("ports", [])
+        radios = interfaces.get("radios", [])
+
         return {
+            "id": self._device.get("id"),
+            "name": self._device.get("name"),
             "model": self._device.get("model"),
-            "ipAddress": self._device.get("ipAddress"),
-            "version": self._device.get("version"),
-            "last_seen": self._device.get("last_seen"),
-            "type": self._device.get("type"),
+            "supported": self._device.get("supported"),
             "macAddress": self._device.get("macAddress"),
+            "ipAddress": self._device.get("ipAddress"),
+            "state": self._device.get("state"),
+            "firmwareVersion": self._device.get("firmwareVersion"),
+            "firmwareUpdatable": self._device.get("firmwareUpdatable"),
+            "adoptedAt": self._device.get("adoptedAt"),
+            "provisionedAt": self._device.get("provisionedAt"),
+            "configurationId": self._device.get("configurationId"),
+            "uplink_deviceId": uplink.get("deviceId"),
+            "features_switching": features.get("switching"),
+            "features_accessPoint": features.get("accessPoint"),
+            "ports": ports,
+            "radios": radios,
         }
