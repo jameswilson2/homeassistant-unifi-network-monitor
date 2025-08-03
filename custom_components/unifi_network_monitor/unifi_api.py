@@ -23,7 +23,6 @@ class UniFiController:
                 async with session.get(url, headers=headers, ssl=False) as resp:
                     if resp.status == 200:
                         full_data = await resp.json()
-                        #ß_LOGGER.debug("UniFi API response data: %s", full_data)
                         data_list = full_data.get("data", [])
                         self.site_name = data_list[0]["name"] if data_list else "Unknown"
                         self.site_internal_id = data_list[0]["id"] if data_list else "Unknown"
@@ -58,24 +57,14 @@ class UniFiController:
                             async with session.get(detail_url, headers=headers, ssl=False) as detail_resp:
                                 if detail_resp.status == 200:
                                     detail_data = await detail_resp.json()
-                                    # _LOGGER.debug("Response text for device %s: %s", device_id, await detail_resp.text())
                                     detail = detail_data.get("data", {})
-                                    # Merge detail into device safely
-                                    for k, v in detail.items():
-                                        if k in ("features", "interfaces") and not isinstance(v, dict):
-                                            _LOGGER.debug("Skipped merging key %s for device %s (not a dict): %s", k, device_id, v)
-                                            continue
-                                        if isinstance(v, dict):
-                                            device[k] = v
-                                        elif not isinstance(v, (dict, list)):
-                                            device[k] = v
-                                        else:
-                                            _LOGGER.debug("Skipped merging key %s for device %s (type %s): %s", k, device_id, type(v), v)
+                                    # Store the full detail dict
+                                    detailed_devices.append(detail)
+                                    _LOGGER.debug("Stored full detail for device %s: %s", device_id, detail)
                                 else:
                                     _LOGGER.error("Failed to fetch details for device %s: HTTP %d", device_id, detail_resp.status)
-                            detailed_devices.append(device)
                         self.devices = detailed_devices
-                        _LOGGER.debug("Final device list after merge: %s", self.devices)
+                        _LOGGER.debug("Final device list after collecting details: %s", self.devices)
                     else:
                         _LOGGER.error("Failed to fetch devices: HTTP %d", resp.status)
                         _LOGGER.debug("Response text: %s", await resp.text())
