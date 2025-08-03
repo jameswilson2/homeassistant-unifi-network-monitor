@@ -52,6 +52,7 @@ class UniFiController:
                         _LOGGER.debug("Fetched %d devices", len(self.devices))
                     else:
                         _LOGGER.error("Failed to fetch devices: HTTP %d", resp.status)
+                        _LOGGER.debug("Response text: %s", await resp.text())
                         self.devices = []
         except Exception as e:
             _LOGGER.error("Exception fetching UniFi devices: %s", e)
