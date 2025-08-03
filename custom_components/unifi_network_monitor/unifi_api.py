@@ -62,15 +62,20 @@ class UniFiController:
                                     detail = detail_data.get("data", {})
                                     # Merge detail into device safely
                                     for k, v in detail.items():
+                                        # Only update if v is a dict and not empty, or a primitive
                                         if k not in device:
                                             device[k] = v
                                         else:
-                                            if isinstance(device[k], dict) and isinstance(v, dict):
+                                            if isinstance(device[k], dict) and isinstance(v, dict) and v:
                                                 device[k].update(v)
+                                            elif isinstance(device[k], dict) and isinstance(v, dict) and not v:
+                                                continue  # Don't overwrite with empty dict
                                             elif isinstance(device[k], list) and isinstance(v, list):
                                                 continue  # Don't overwrite lists
                                             elif not isinstance(v, (dict, list)):
                                                 device[k] = v
+                                            else:
+                                                _LOGGER.debug("Skipped merging key %s for device %s (type mismatch or empty)", k, device_id)
                                 else:
                                     _LOGGER.error("Failed to fetch details for device %s: HTTP %d", device_id, detail_resp.status)
                             detailed_devices.append(device)
