@@ -50,7 +50,6 @@ class UniFiController:
                         devices_data = await resp.json()
                         device_list = devices_data.get("data", [])
                         detailed_devices = []
-                        # Fetch details for each device
                         for device in device_list:
                             device_id = device.get("id")
                             if not device_id:
@@ -60,10 +59,20 @@ class UniFiController:
                                 if detail_resp.status == 200:
                                     detail_data = await detail_resp.json()
                                     _LOGGER.debug("Response text for device %s: %s", device_id, await detail_resp.text())
-                                    # Merge the summary and detail data
-                                    device.update(detail_data.get("data", {}))
+                                    detail = detail_data.get("data", {})
+                                    # Merge detail into device safely
+                                    for k, v in detail.items():
+                                        if k not in device:
+                                            device[k] = v
+                                        else:
+                                            if isinstance(device[k], dict) and isinstance(v, dict):
+                                                device[k].update(v)
+                                            elif isinstance(device[k], list) and isinstance(v, list):
+                                                continue  # Don't overwrite lists
+                                            elif not isinstance(v, (dict, list)):
+                                                device[k] = v
                                 else:
-                                    _LOGGER.warning("Failed to fetch details for device %s: HTTP %d", device_id, detail_resp.status)
+                                    _LOGGER.error("Failed to fetch details for device %s: HTTP %d", device_id, detail_resp.status)
                             detailed_devices.append(device)
                         self.devices = detailed_devices
                         _LOGGER.debug("Fetched %d devices with details", len(self.devices))
