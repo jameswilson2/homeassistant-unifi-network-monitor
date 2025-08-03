@@ -25,10 +25,118 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     # For each device, create a sensor for each attribute
     for device in controller.devices:
+        # Standard device attributes
         for attr, desc in SENSOR_TYPES.items():
             entities.append(
                 UniFiDeviceAttributeSensor(device, attr, desc["name"], desc["icon"])
             )
+
+        # Per-port sensors
+        interfaces = device.get("interfaces", {})
+        if isinstance(interfaces, dict):
+            ports = interfaces.get("ports", [])
+            for port in ports:
+                idx = port.get("idx")
+                if idx is None:
+                    continue
+                # Enabled
+                entities.append(
+                    UniFiPortSensor(
+                        device,
+                        port,
+                        idx,
+                        "enabled",
+                        f"Port {idx} Enabled",
+                        "mdi:power"
+                    )
+                )
+                # Connector
+                entities.append(
+                    UniFiPortSensor(
+                        device,
+                        port,
+                        idx,
+                        "connector",
+                        f"Port {idx} Connector",
+                        "mdi:ethernet"
+                    )
+                )
+                # Speed
+                entities.append(
+                    UniFiPortSensor(
+                        device,
+                        port,
+                        idx,
+                        "speedMbps",
+                        f"Port {idx} Speed",
+                        "mdi:speedometer"
+                    )
+                )
+                # PoE Standard
+                poe_standard = port.get("poe", {}).get("standard") if isinstance(port.get("poe"), dict) else None
+                if poe_standard is not None:
+                    entities.append(
+                        UniFiPortSensor(
+                            device,
+                            port,
+                            idx,
+                            "poe_standard",
+                            f"Port {idx} PoE Standard",
+                            "mdi:flash"
+                        )
+                    )
+
+        # Per-radio sensors
+        radios = interfaces.get("radios", []) if isinstance(interfaces, dict) else []
+        for i, radio in enumerate(radios):
+            # wlanStandard
+            if "wlanStandard" in radio:
+                entities.append(
+                    UniFiRadioSensor(
+                        device,
+                        radio,
+                        i,
+                        "wlanStandard",
+                        f"Radio {i+1} WLAN Standard",
+                        "mdi:wifi"
+                    )
+                )
+            # frequencyGHz
+            if "frequencyGHz" in radio:
+                entities.append(
+                    UniFiRadioSensor(
+                        device,
+                        radio,
+                        i,
+                        "frequencyGHz",
+                        f"Radio {i+1} Frequency (GHz)",
+                        "mdi:wifi"
+                    )
+                )
+            # channelWidthMHz
+            if "channelWidthMHz" in radio:
+                entities.append(
+                    UniFiRadioSensor(
+                        device,
+                        radio,
+                        i,
+                        "channelWidthMHz",
+                        f"Radio {i+1} Channel Width (MHz)",
+                        "mdi:wifi"
+                    )
+                )
+            # channel
+            if "channel" in radio:
+                entities.append(
+                    UniFiRadioSensor(
+                        device,
+                        radio,
+                        i,
+                        "channel",
+                        f"Radio {i+1} Channel",
+                        "mdi:wifi"
+                    )
+                )
 
     async_add_entities(entities, True)
 
@@ -71,3 +179,62 @@ class UniFiDeviceAttributeSensor(Entity):
     @property
     def state(self):
         return self._device.get(self._attribute)
+
+class UniFiPortSensor(Entity):
+    def __init__(self, device, port, idx, attribute, friendly_name, icon):
+        self._device = device
+        self._port = port
+        self._idx = idx
+        self._attribute = attribute
+        self._attr_name = f"{device.get('name', device.get('macAddress', 'Unknown'))} {friendly_name}"
+        self._attr_unique_id = f"unifi_{device.get('macAddress', 'unknown')}_port{idx}_{attribute}"
+        self._attr_icon = icon
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers = {(DOMAIN, self._device.get("macAddress"))},
+            name = self._device.get("name"),
+            model = self._device.get("model"),
+            manufacturer = "Ubiquiti",
+            sw_version = self._device.get("firmwareVersion"),
+            configuration_url = None,
+        )
+
+    async def async_update(self):
+        pass
+
+    @property
+    def state(self):
+        if self._attribute == "poe_standard":
+            poe = self._port.get("poe", {})
+            return poe.get("standard") if isinstance(poe, dict) else None
+        return self._port.get(self._attribute)
+
+class UniFiRadioSensor(Entity):
+    def __init__(self, device, radio, idx, attribute, friendly_name, icon):
+        self._device = device
+        self._radio = radio
+        self._idx = idx
+        self._attribute = attribute
+        self._attr_name = f"{device.get('name', device.get('macAddress', 'Unknown'))} {friendly_name}"
+        self._attr_unique_id = f"unifi_{device.get('macAddress', 'unknown')}_radio{idx}_{attribute}"
+        self._attr_icon = icon
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers = {(DOMAIN, self._device.get("macAddress"))},
+            name = self._device.get("name"),
+            model = self._device.get("model"),
+            manufacturer = "Ubiquiti",
+            sw_version = self._device.get("firmwareVersion"),
+            configuration_url = None,
+        )
+
+    async def async_update(self):
+        pass
+
+    @property
+    def state(self):
+        return self._radio.get(self._attribute)
