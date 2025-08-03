@@ -57,6 +57,8 @@ class UniFiController:
                             async with session.get(detail_url, headers=headers, ssl=False) as detail_resp:
                                 if detail_resp.status == 200:
                                     detail_data = await detail_resp.json()
+                                    # After: detail_data = await detail_resp.json()
+                                    _LOGGER.debug("Raw detail response for device %s: %s", device_id, detail_data)
                                     detail = detail_data.get("data", {})
                                     # Store the full detail dict
                                     detailed_devices.append(detail)
