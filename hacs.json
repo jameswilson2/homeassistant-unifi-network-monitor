@@ -1,0 +1,7 @@
+{
+  "name": "UniFi Network Monitor",
+  "content_in_root": false,
+  "domains": ["unifi_network_monitor"],
+  "country": "GB",
+  "homeassistant": "2024.0.0"
+}

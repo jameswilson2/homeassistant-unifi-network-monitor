@@ -1,0 +1,17 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to UniFi Network",
+        "description": "Enter the details for your UniFi Controller.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "site": "Site",
+          "api_key": "API Key",
+          "verify_ssl": "Verify SSL"
+        }
+      }
+    }
+  }
+}

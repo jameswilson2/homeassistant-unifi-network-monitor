@@ -1,0 +1,9 @@
+{
+  "domain": "unifi_network_monitor",
+  "name": "UniFi Network Monitor",
+  "version": "0.1.0",
+  "documentation": "https://github.com/jameswilson2/homeassistant-unifi-network-monitor",
+  "requirements": ["httpx>=0.25.0"],
+  "codeowners": ["@jameswilson2"],
+  "config_flow": true
+}
