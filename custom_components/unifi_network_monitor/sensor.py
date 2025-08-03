@@ -27,10 +27,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
     import logging
     _LOGGER = logging.getLogger(__name__)
-    _LOGGER.debug("Device dict passed to sensors: %s", device)
 
     # For each device, create a sensor for each attribute
     for device in controller.devices:
+        _LOGGER.debug("Device dict passed to sensors: %s", device)
         for attr, desc in SENSOR_TYPES.items():
             entities.append(
                 UniFiDeviceAttributeSensor(device, attr, desc["name"], desc["icon"])
