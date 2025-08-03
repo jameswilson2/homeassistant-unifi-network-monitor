@@ -12,7 +12,9 @@ SENSOR_TYPES = {
     "model": {"name": "Model", "icon": "mdi:access-point"},
     "supported": {"name": "Supported", "icon": "mdi:check-circle"},
     "firmwareUpdatable": {"name": "Firmware Updatable", "icon": "mdi:update"},
-    # Add more attributes here as needed
+    "adoptedAt": {"name": "Adopted At", "icon": "mdi:calendar-clock"},
+    "provisionedAt": {"name": "Provisioned At", "icon": "mdi:calendar-clock"},
+    "configurationId": {"name": "Configuration ID", "icon": "mdi:identifier"},
 }
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
@@ -169,16 +171,18 @@ class UniFiDeviceAttributeSensor(Entity):
             model = self._device.get("model"),
             manufacturer = "Ubiquiti",
             sw_version = self._device.get("firmwareVersion"),
-            configuration_url = None,
         )
 
     async def async_update(self):
-        # No-op: device data is refreshed by controller
         pass
 
     @property
     def state(self):
-        return self._device.get(self._attribute)
+        value = self._device.get(self._attribute)
+        # Convert booleans to Yes/No for display
+        if isinstance(value, bool):
+            return "Yes" if value else "No"
+        return value
 
 class UniFiPortSensor(Entity):
     def __init__(self, device, port, idx, attribute, friendly_name, icon):
@@ -198,7 +202,6 @@ class UniFiPortSensor(Entity):
             model = self._device.get("model"),
             manufacturer = "Ubiquiti",
             sw_version = self._device.get("firmwareVersion"),
-            configuration_url = None,
         )
 
     async def async_update(self):
@@ -209,7 +212,10 @@ class UniFiPortSensor(Entity):
         if self._attribute == "poe_standard":
             poe = self._port.get("poe", {})
             return poe.get("standard") if isinstance(poe, dict) else None
-        return self._port.get(self._attribute)
+        value = self._port.get(self._attribute)
+        if isinstance(value, bool):
+            return "Yes" if value else "No"
+        return value
 
 class UniFiRadioSensor(Entity):
     def __init__(self, device, radio, idx, attribute, friendly_name, icon):
@@ -229,7 +235,6 @@ class UniFiRadioSensor(Entity):
             model = self._device.get("model"),
             manufacturer = "Ubiquiti",
             sw_version = self._device.get("firmwareVersion"),
-            configuration_url = None,
         )
 
     async def async_update(self):
@@ -237,4 +242,7 @@ class UniFiRadioSensor(Entity):
 
     @property
     def state(self):
-        return self._radio.get(self._attribute)
+        value = self._radio.get(self._attribute)
+        if isinstance(value, bool):
+            return "Yes" if value else "No"
+        return value
