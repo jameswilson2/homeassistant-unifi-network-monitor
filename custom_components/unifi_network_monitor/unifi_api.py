@@ -62,10 +62,11 @@ class UniFiController:
                                     detail = detail_data.get("data", {})
                                     # Merge detail into device safely
                                     for k, v in detail.items():
-                                        # Only merge if v is a dict (not a list of keys)
+                                        if k in ("features", "interfaces") and not isinstance(v, dict):
+                                            _LOGGER.debug("Skipped merging key %s for device %s (not a dict): %s", k, device_id, v)
+                                            continue
                                         if isinstance(v, dict):
                                             device[k] = v
-                                        # Only merge primitives (str, int, bool, etc.)
                                         elif not isinstance(v, (dict, list)):
                                             device[k] = v
                                         else:
