@@ -7,7 +7,16 @@ from .const import DOMAIN
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     controller = hass.data[DOMAIN][entry.entry_id]
-    entities = [UniFiSiteSensor(controller)]
+    await controller.update_data()
+    entities = []
+
+    # Site name sensor (optional, keep if you want)
+    entities.append(UniFiSiteSensor(controller))
+
+    # Add a sensor for each device
+    for device in controller.devices:
+        entities.append(UniFiDeviceSensor(device))
+
     async_add_entities(entities, True)
 
 class UniFiSiteSensor(Entity):
@@ -22,3 +31,30 @@ class UniFiSiteSensor(Entity):
     @property
     def state(self):
         return self._controller.site_name
+
+class UniFiDeviceSensor(Entity):
+    def __init__(self, device):
+        self._device = device
+        self._attr_name = f"UniFi Device {device.get('name', device.get('mac', 'Unknown'))}"
+        self._attr_unique_id = f"unifi_device_{device.get('mac', 'unknown')}"
+
+    async def async_update(self):
+        # No-op: device data is refreshed by controller
+        pass
+
+    @property
+    def state(self):
+        # Example: show device state (1=connected, 0=disconnected)
+        return self._device.get("state", "unknown")
+
+    @property
+    def extra_state_attributes(self):
+        # Expose more device info as attributes
+        return {
+            "model": self._device.get("model"),
+            "ip": self._device.get("ip"),
+            "version": self._device.get("version"),
+            "last_seen": self._device.get("last_seen"),
+            "type": self._device.get("type"),
+            "mac": self._device.get("mac"),
+        }
