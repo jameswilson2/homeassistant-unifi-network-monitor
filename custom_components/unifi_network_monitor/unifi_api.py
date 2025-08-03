@@ -42,7 +42,7 @@ class UniFiController:
             self.devices = []
             return
 
-        devices_url = f"https://{self._host}/proxy/network/api/s/{self.site_name}/stat/device"
+        devices_url = f"https://{self._host}/proxy/network/integration/v1/sites/{self.site_name}/devices"
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(devices_url, headers=headers, ssl=False) as resp:
