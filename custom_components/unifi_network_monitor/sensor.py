@@ -25,9 +25,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     # Site name sensor (optional)
     entities.append(UniFiSiteSensor(controller))
 
+    import logging
+    _LOGGER = logging.getLogger(__name__)
+    _LOGGER.debug("Device dict passed to sensors: %s", device)
+
     # For each device, create a sensor for each attribute
     for device in controller.devices:
-        # Standard device attributes
         for attr, desc in SENSOR_TYPES.items():
             entities.append(
                 UniFiDeviceAttributeSensor(device, attr, desc["name"], desc["icon"])
