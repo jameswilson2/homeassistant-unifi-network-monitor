@@ -59,6 +59,7 @@ class UniFiController:
                             async with session.get(detail_url, headers=headers, ssl=False) as detail_resp:
                                 if detail_resp.status == 200:
                                     detail_data = await detail_resp.json()
+                                    _LOGGER.debug("Response text for device %s: %s", device_id, await detail_resp.text())
                                     # Merge the summary and detail data
                                     device.update(detail_data.get("data", {}))
                                 else:
